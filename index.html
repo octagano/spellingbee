@@ -60,7 +60,7 @@
             {
                 try {
                     let r= await fetch("Words.txt");
-                    if (r.ok) {let w=(await r.text()).split(/\s+/).filter(x=>x&&!x.startsWith("#"));
+                    if (r.ok) {let w=(await r.text()).split(/\r?\n/).map(x=>x.trim()).filter(x=>x&&!x.startsWith("#"));
                         if(w.length)return w}
                     }
                 catch (e){}
@@ -82,7 +82,7 @@
                 repeat();
                 timer = setInterval(tick,1000)    
             }
-            function repeat(){if(word&&!done) say(`Your word is ${word}. ${word}.`)}
+            function repeat(){if(word&&!done) say(`Your word is ${word}.`)}
             function tick() {if(--time<0)return finish("Time is up!", false); $('time').textContent=time; if(time==0)finish("Time is up!", false)}
             function check() {if(!done) {let right=$('answer').value.trim().toLowerCase()===word.toLowerCase();finish(right?"Correct!":"Incorrect!", right)}}
             function finish(message, right) {done=1; clearInterval(timer); correct+=right; attempted++; $('answer').disabled=true;$('result').textContent=`${message} The word was: ${word}`;$('result').className=right?'ok':'bad';$('score').textContent=`Score: ${correct} / ${attempted}`; say(`${message} The word was ${word}.`)}
