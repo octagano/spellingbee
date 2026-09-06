@@ -1,0 +1,92 @@
+<html>
+    <head>
+        <meta charset ="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Spelling Bee Practice</title>
+        <style>
+            body {font:16px; text-align:center; background-color: #eef6ff; padding: 3px}
+            main {max-width:500px; margin:auto; background:white;padding:25px;border-radius:12px}
+            #time{font-size: 48px}
+            input{width:90%; padding:12px; font-size:22px; text-align:center}
+            button{padding:10px 16px; margin:12px 3px; font-size:16px}
+            #result{min-height: 45px; font-weight: bold}
+            #voicewarning{color:#9a3412; font-weight:bold; min-height:24px}
+            .bad{color:red}
+            .ok{color:green}
+        </style>
+    </head>
+    <body>
+        <main>
+            <h1>Spelling Bee Practice</h1>
+            <p>Type the word you hear. Press Enter to submit.</p>
+            <p id="voicewarning">Make sure your device has a working voice synthesizer.</p>
+            <div id="time">45</div>
+            <input type="text" id="answer" placeholder="Type the word here..." autofocus>
+            <div>
+                <button type="button" onclick="repeat()">Repeat</button>
+                <button type="button" onclick="check()">Submit</button>
+                <button type="button" onclick="next()">Next</button>
+            </div>
+            <p id="result"></p><p id="score">Score: 0/0</p>
+        </main>
+        <script>
+            const LIMIT = 45, fallback='accomodate adventure appreciate'.split(" ");
+            let words = [], pool = [], word = "", time = LIMIT, done = 0, correct = 0, attempted = 0, timer;
+            let voice;
+            const $ = id => document.getElementById(id);
+            function warnvoice(message){$('voicewarning').textContent=message||''}
+            function refreshvoices(){
+                if(!('speechSynthesis' in window)){
+                    warnvoice("Your browser does not support speech synthesis. Please use a different browser.");
+                    return;
+                }
+                const voices = speechSynthesis.getVoices();
+                const localEnglish=voices.find(v=>v.localService&&/^en/i.test(v.lang)&&/microsoft|natural/i.test(v.name))||voices.find(v=>v.localService&&/^en/i.test(v.lang));
+                voice=localEnglish||voices.find(v=>/^en/i.test(v.lang))||voices[0];
+                if(!voices.length)warnvoice("No voices available. Please check your device settings.");
+                else if(!localEnglish)warnvoice("No local English voice found. Please check your device settings.");
+                else if(!voice)warnvoice("No English voice found. Please check your device settings.");
+                else warnvoice();
+            }
+            if ('speechSynthesis' in window) speechSynthesis.addEventListener('voiceschanged', refreshvoices);
+            const say=text=>{if(!('speechSynthesis' in window)||!voice){refreshvoices();if(!voice)return}
+            speechSynthesis.cancel();
+            let u=new SpeechSynthesisUtterance(text);
+            u.voice=voice;
+            u.lang=voice.lang;
+            speechSynthesis.speak(u);
+            }
+            async function load()
+            {
+                try {
+                    let r= await fetch("Words.txt");
+                    if (r.ok) {let w=(await r.text()).split(/\s+/).filter(x=>x&&!x.startsWith("#"));
+                        if(w.length)return w}
+                    }
+                catch (e){}
+            return fallback
+            }
+
+            function next()
+            {
+                clearInterval(timer);
+                if(!pool.length) pool = [...words].sort(()=>Math.random()-0.5);
+                word = pool.pop();
+                time = LIMIT;
+                done = 0;
+                $('time').textContent = time;
+                $('answer').value = '';
+                $('answer').disabled = false;
+                $('answer').textContent = '';
+                $('answer').focus();
+                repeat();
+                timer = setInterval(tick,1000)    
+            }
+            function repeat(){if(word&&!done) say(`Your word is ${word}. ${word}.`)}
+            function tick() {if(--time<0)return finish("Time is up!", false); $('time').textContent=time; if(time==0)finish("Time is up!", false)}
+            function check() {if(!done) {let right=$('answer').value.trim().toLowerCase()===word.toLowerCase();finish(right?"Correct!":"Incorrect!", right)}}
+            function finish(message, right) {done=1; clearInterval(timer); correct+=right; attempted++; $('answer').disabled=true;$('result').textContent=`${message} The word was: ${word}`;$('result').className=right?'ok':'bad';$('score').textContent=`Score: ${correct} / ${attempted}`; say(`${message} The word was ${word}.`)}
+            $('answer').onkeydown = e => {if(e.key==='Enter') check()};load().then(w=>{words=w; next()});
+        </script>
+    </body>
+</html>
